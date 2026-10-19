@@ -36,7 +36,7 @@ namespace osu.Game.Screens.Play
 
         protected override APIRequest<APIScoreToken> CreateTokenRequest()
         {
-            int beatmapId = Beatmap.Value.BeatmapInfo.OnlineID;
+            int beatmapId = Beatmap.Value.GetOnlineIds().BeatmapID;
             int rulesetId = Ruleset.Value.OnlineID;
 
             if (beatmapId <= 0)
@@ -48,18 +48,17 @@ namespace osu.Game.Screens.Play
             if (!Ruleset.Value.IsLegacyRuleset())
                 return null;
 
-            return new CreateSoloScoreRequest(Beatmap.Value.BeatmapInfo, rulesetId, Game.VersionHash);
+            return new CreateSoloScoreRequest(Beatmap.Value.BeatmapInfo, rulesetId, Game.VersionHash, [.. Score.ScoreInfo.Mods], beatmapId);
         }
 
         protected override bool ShouldExitOnTokenRetrievalFailure(Exception exception) => false;
 
         protected override APIRequest<MultiplayerScore> CreateSubmissionRequest(Score score, long token)
         {
-            IBeatmapInfo beatmap = score.ScoreInfo.BeatmapInfo!;
+            int beatmapId = Beatmap.Value.GetOnlineIds().BeatmapID;
+            Debug.Assert(beatmapId > 0);
 
-            Debug.Assert(beatmap.OnlineID > 0);
-
-            return new SubmitSoloScoreRequest(score.ScoreInfo, token, beatmap.OnlineID);
+            return new SubmitSoloScoreRequest(score, Beatmap.Value.Beatmap, token, beatmapId);
         }
     }
 }

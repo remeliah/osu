@@ -256,6 +256,9 @@ namespace osu.Game.Rulesets.Catch
 
         public ILegacyScoreSimulator CreateLegacyScoreSimulator() => new CatchLegacyScoreSimulator();
 
+        public ILegacyScoreProcessor CreateLegacyScoreProcessor(IWorkingBeatmap workingBeatmap, IBeatmap playableBeatmap, IReadOnlyList<Mod> mods, int maximumJudgements)
+            => new CatchLegacyScoreProcessor(workingBeatmap, mods);
+
         public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new CatchReplayFrame();
 
         public override HitObjectComposer CreateHitObjectComposer() => new CatchHitObjectComposer(this);

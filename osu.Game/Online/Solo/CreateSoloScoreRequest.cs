@@ -7,19 +7,24 @@ using osu.Framework.IO.Network;
 using osu.Game.Beatmaps;
 using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
+using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Online.Solo
 {
     public class CreateSoloScoreRequest : APIRequest<APIScoreToken>
     {
-        private readonly BeatmapInfo beatmapInfo;
-        private readonly int rulesetId;
+        public BeatmapInfo BeatmapInfo { get; }
+        public int BeatmapId { get; }
+        public int RulesetId { get; }
+        public Mod[] Mods { get; }
         private readonly string versionHash;
 
-        public CreateSoloScoreRequest(BeatmapInfo beatmapInfo, int rulesetId, string versionHash)
+        public CreateSoloScoreRequest(BeatmapInfo beatmapInfo, int rulesetId, string versionHash, Mod[]? mods = null, int? beatmapId = null)
         {
-            this.beatmapInfo = beatmapInfo;
-            this.rulesetId = rulesetId;
+            BeatmapInfo = beatmapInfo;
+            BeatmapId = beatmapId ?? beatmapInfo.OnlineID;
+            RulesetId = rulesetId;
+            Mods = mods ?? [];
             this.versionHash = versionHash;
         }
 
@@ -28,11 +33,11 @@ namespace osu.Game.Online.Solo
             var req = base.CreateWebRequest();
             req.Method = HttpMethod.Post;
             req.AddParameter("version_hash", versionHash);
-            req.AddParameter("beatmap_hash", beatmapInfo.MD5Hash);
-            req.AddParameter("ruleset_id", rulesetId.ToString(CultureInfo.InvariantCulture));
+            req.AddParameter("beatmap_hash", BeatmapInfo.MD5Hash);
+            req.AddParameter("ruleset_id", RulesetId.ToString(CultureInfo.InvariantCulture));
             return req;
         }
 
-        protected override string Target => $@"beatmaps/{beatmapInfo.OnlineID}/solo/scores";
+        protected override string Target => $@"beatmaps/{BeatmapId}/solo/scores";
     }
 }

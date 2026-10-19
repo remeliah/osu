@@ -227,6 +227,38 @@ namespace osu.Game.Beatmaps
 
         private Task<IBeatmap> beatmapLoadTask;
 
+        private (int BeatmapID, int BeatmapSetID)? sourceOnlineIds;
+
+        /// <summary>
+        /// Gets the online IDs stored in the database, falling back to the IDs embedded in the source beatmap.
+        /// </summary>
+        /// <remarks>
+        /// Online metadata lookups can unlink a beatmap from an online ID while the original stable-format
+        /// <c>.osu</c> file still contains valid IDs. Stable chat features such as <c>/np</c> must retain access
+        /// to those source IDs.
+        /// </remarks>
+        internal (int BeatmapID, int BeatmapSetID) GetOnlineIds()
+        {
+            int beatmapId = BeatmapInfo.OnlineID;
+            int beatmapSetId = BeatmapInfo.BeatmapSet?.OnlineID ?? -1;
+
+            if (beatmapId > 0 && beatmapSetId > 0)
+                return (beatmapId, beatmapSetId);
+
+            // Loading captures the IDs before the database-backed metadata is copied over the decoded model.
+            _ = Beatmap;
+
+            if (sourceOnlineIds is { } source)
+            {
+                if (beatmapId <= 0)
+                    beatmapId = source.BeatmapID;
+                if (beatmapSetId <= 0)
+                    beatmapSetId = source.BeatmapSetID;
+            }
+
+            return (beatmapId, beatmapSetId);
+        }
+
         private Task<IBeatmap> loadBeatmapAsync()
         {
             lock (beatmapFetchLock)
@@ -235,6 +267,8 @@ namespace osu.Game.Beatmaps
                 {
                     // Todo: Handle cancellation during beatmap parsing
                     var b = GetBeatmap() ?? new Beatmap();
+
+                    sourceOnlineIds = (b.BeatmapInfo.OnlineID, b.BeatmapInfo.BeatmapSet?.OnlineID ?? -1);
 
                     // Copy across values of key properties for which the database-backed model has data that the decoded beatmap isn't going to.
                     b.BeatmapInfo.ID = BeatmapInfo.ID;

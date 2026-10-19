@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Resources.Localisation.Web;
@@ -31,6 +32,9 @@ namespace osu.Game.Overlays.Profile.Header.Components
         private RankGraph rankGraph = null!;
 
         public readonly Bindable<UserProfileData?> User = new Bindable<UserProfileData?>();
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -155,6 +159,10 @@ namespace osu.Game.Overlays.Profile.Header.Components
                     },
                 }
             };
+
+            // Stable Bancho does not provide country rank in its packets.
+            if (api is LegacyBanchoAPIAccess)
+                detailCountryRank.Alpha = 0;
         }
 
         protected override void LoadComplete()

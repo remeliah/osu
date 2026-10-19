@@ -8,6 +8,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
 using osu.Framework.Screens;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.API;
 using osu.Game.Screens;
 using osu.Game.Screens.Play;
 
@@ -22,6 +23,9 @@ namespace osu.Game.Overlays.Dashboard.CurrentlyOnline
         [Resolved]
         private IPerformFromScreenRunner? performer { get; set; }
 
+        [Resolved]
+        private IAPIProvider? api { get; set; }
+
         protected OnlineUserPanel(APIUser user)
         {
             User = user;
@@ -30,6 +34,9 @@ namespace osu.Game.Overlays.Dashboard.CurrentlyOnline
 
         protected void BeginSpectating()
         {
+            if (api?.LocalUser.Value?.Id == User.Id)
+                return;
+
             performer?.PerformFromScreen(s => s.Push(new SoloSpectatorScreen(User)));
         }
 

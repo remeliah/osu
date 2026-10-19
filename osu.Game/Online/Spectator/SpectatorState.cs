@@ -33,12 +33,19 @@ namespace osu.Game.Online.Spectator
         [Key(4)]
         public Dictionary<HitResult, int> MaximumStatistics { get; set; } = new Dictionary<HitResult, int>();
 
+        /// <summary>
+        /// The MD5 checksum used by stable Bancho to identify the currently played beatmap.
+        /// This is required as a fallback when a local lazer beatmap has no online ID.
+        /// </summary>
+        [Key(5)]
+        public string BeatmapHash { get; set; }
+
         public bool Equals(SpectatorState other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
 
-            return BeatmapID == other.BeatmapID && Mods.SequenceEqual(other.Mods) && RulesetID == other.RulesetID && State == other.State;
+            return BeatmapID == other.BeatmapID && BeatmapHash == other.BeatmapHash && Mods.SequenceEqual(other.Mods) && RulesetID == other.RulesetID && State == other.State;
         }
 
         public override string ToString() => $"Beatmap:{BeatmapID} Mods:{string.Join(',', Mods)} Ruleset:{RulesetID} State:{State}";

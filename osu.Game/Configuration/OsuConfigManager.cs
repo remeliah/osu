@@ -71,6 +71,12 @@ namespace osu.Game.Configuration
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
             SetDefault(OsuSetting.Token, string.Empty);
+            SetDefault(OsuSetting.PrivateServerUrl, string.Empty);
+            SetDefault(OsuSetting.PrivateServerAdvancedEndpoints, false);
+            SetDefault(OsuSetting.PrivateServerBanchoUrl, string.Empty);
+            SetDefault(OsuSetting.PrivateServerWebsiteUrl, string.Empty);
+            SetDefault(OsuSetting.PrivateServerAvatarUrl, string.Empty);
+            SetDefault(OsuSetting.PrivateServerResourceUrls, string.Empty);
 
             SetDefault(OsuSetting.AutomaticallyDownloadMissingBeatmaps, true);
 
@@ -381,6 +387,14 @@ namespace osu.Game.Configuration
         BeatmapLeaderboardSortMode,
         BeatmapDetailModsFilter,
         Username,
+
+        /// <summary>
+        /// Root URL of the private osu!stable-compatible Bancho server.
+        /// </summary>
+        PrivateServerUrl,
+        PrivateServerWebsiteUrl,
+        PrivateServerResourceUrls,
+
         ReleaseStream,
         SavePassword,
         SaveUsername,
@@ -485,5 +499,11 @@ namespace osu.Game.Configuration
         /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
         /// </summary>
         PMFriendsOnly,
+
+        // Keep new settings at the end. OsuSetting is consumed across assemblies and
+        // inserting values above existing entries changes their compiled enum ordinals.
+        PrivateServerAdvancedEndpoints,
+        PrivateServerBanchoUrl,
+        PrivateServerAvatarUrl,
     }
 }

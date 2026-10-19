@@ -217,7 +217,7 @@ namespace osu.Game.Screens.Select
 
         private void refetchScoresFromMods()
         {
-            if (FilterBySelectedMods.Value)
+            if (FilterBySelectedMods.Value || (api is LegacyBanchoAPIAccess && mods.Value.Any(m => m is ModRelax)))
                 RefetchScores();
         }
 
@@ -249,7 +249,14 @@ namespace osu.Game.Screens.Select
                 // For now, we forcefully refresh to keep things simple.
                 // In the future, removing this requirement may be deemed useful, but will need ample testing of edge case scenarios
                 // (like returning from gameplay after setting a new score, returning to song select after main menu).
-                leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(fetchBeatmapInfo, fetchRuleset, fetchScope, FilterBySelectedMods.Value ? mods.Value.ToArray() : null, fetchSorting),
+                // Stable has separate RX leaderboards. When Relax is active in
+                // gameplay, honour it even if the generic "Selected Mods" filter
+                // toggle is off; vanilla keeps the normal global leaderboard.
+                bool useRelaxRuleset = api is LegacyBanchoAPIAccess && mods.Value.Any(m => m is ModRelax);
+                bool useSelectedMods = FilterBySelectedMods.Value || useRelaxRuleset;
+                leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(fetchBeatmapInfo, fetchRuleset, fetchScope,
+                        useSelectedMods ? mods.Value.ToArray() : null, fetchSorting,
+                        LegacyRulesetOnly: useRelaxRuleset && !FilterBySelectedMods.Value),
                     forceRefresh: true);
 
                 if (!initialFetchComplete)

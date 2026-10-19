@@ -300,6 +300,9 @@ namespace osu.Game.Rulesets.Osu
 
         public ILegacyScoreSimulator CreateLegacyScoreSimulator() => new OsuLegacyScoreSimulator();
 
+        public ILegacyScoreProcessor CreateLegacyScoreProcessor(IWorkingBeatmap workingBeatmap, IBeatmap playableBeatmap, IReadOnlyList<Mod> mods, int maximumJudgements)
+            => new OsuLegacyScoreProcessor(workingBeatmap, playableBeatmap, mods);
+
         public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new OsuReplayFrame();
 
         public override IRulesetConfigManager CreateConfig(SettingsStore? settings) => new OsuRulesetConfigManager(settings, RulesetInfo);

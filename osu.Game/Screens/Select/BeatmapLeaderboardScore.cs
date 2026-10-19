@@ -277,7 +277,7 @@ namespace osu.Game.Screens.Select
                                                         Masking = true,
                                                         Children = new Drawable[]
                                                         {
-                                                            new UpdateableFlag(Score.User.CountryCode)
+                                                            api is LegacyBanchoAPIAccess ? Empty() : new UpdateableFlag(Score.User.CountryCode)
                                                             {
                                                                 Anchor = Anchor.CentreLeft,
                                                                 Origin = Anchor.CentreLeft,

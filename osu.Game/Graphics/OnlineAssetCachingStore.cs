@@ -6,6 +6,7 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform;
 using osu.Game.Database;
+using osu.Game.Configuration;
 using osu.Game.Online;
 
 namespace osu.Game.Graphics
@@ -32,12 +33,20 @@ namespace osu.Game.Graphics
         private readonly RealmFileStore fileStore;
         private readonly LargeTextureStore largeTextureStore;
 
-        public OnlineAssetCachingStore(GameHost host, RealmAccess realmAccess)
+        public OnlineAssetCachingStore(GameHost host, RealmAccess realmAccess, string? privateServerUrl = null, string? privateWebsiteUrl = null, string? privateResourceUrls = null)
         {
             this.realmAccess = realmAccess;
-            onlineStore = new TrustedDomainOnlineStore();
+            onlineStore = new TrustedDomainOnlineStore(privateServerUrl, privateWebsiteUrl, privateResourceUrls);
             fileStore = new RealmFileStore(realmAccess, host.Storage);
             // largeTextureStore = new LargeTextureStore(host.Renderer, host.CreateTextureLoaderStore(new StorageBackedResourceStore(fileStore.Storage)));
+            largeTextureStore = new LargeTextureStore(host.Renderer, host.CreateTextureLoaderStore(onlineStore));
+        }
+
+        public OnlineAssetCachingStore(GameHost host, RealmAccess realmAccess, OsuConfigManager config)
+        {
+            this.realmAccess = realmAccess;
+            onlineStore = new TrustedDomainOnlineStore(config);
+            fileStore = new RealmFileStore(realmAccess, host.Storage);
             largeTextureStore = new LargeTextureStore(host.Renderer, host.CreateTextureLoaderStore(onlineStore));
         }
 

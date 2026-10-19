@@ -14,6 +14,7 @@ using osu.Framework.Logging;
 using osu.Framework.Screens;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Bancho;
 using osu.Game.Online.Rooms;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play;
@@ -177,6 +178,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             // base logic intentionally suppressed - failing in multiplayer only marks the score with F rank
             // see also: `MultiSpectatorPlayer.PerformFail()`
             ScoreProcessor.FailScore(Score.ScoreInfo);
+
+            if (client is LegacyBanchoMultiplayerClient legacyClient)
+                legacyClient.NotifyPlayerFailed();
         }
 
         protected override void ConcludeFailedScore(Score score)

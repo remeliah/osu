@@ -3,6 +3,7 @@
 
 using System.ComponentModel;
 using osu.Framework.Allocation;
+using osu.Game.Online.API;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Rooms;
 
@@ -12,6 +13,9 @@ namespace osu.Game.Screens.OnlinePlay.Match.Components
     {
         [Resolved]
         private ChannelManager? channelManager { get; set; }
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
 
         private readonly Room room;
         private readonly bool leaveChannelOnDispose;
@@ -42,7 +46,8 @@ namespace osu.Game.Screens.OnlinePlay.Match.Components
             if (room.RoomID == null || room.ChannelId == 0)
                 return;
 
-            Channel.Value = channelManager?.JoinChannel(new Channel { Id = room.ChannelId, Type = ChannelType.Multiplayer, Name = $"#lazermp_{room.RoomID.Value}" });
+            string channelName = api is LegacyBanchoAPIAccess ? "#multiplayer" : $"#lazermp_{room.RoomID.Value}";
+            Channel.Value = channelManager?.JoinChannel(new Channel { Id = room.ChannelId, Type = ChannelType.Multiplayer, Name = channelName });
         }
 
         protected override void Dispose(bool isDisposing)

@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online;
+using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays.Profile.Header.Components;
 using osu.Game.Resources.Localisation.Web;
@@ -48,11 +49,17 @@ namespace osu.Game.Users
         private LocalUserStatisticsProvider? statisticsProvider { get; set; }
 
         [Resolved]
+        private IAPIProvider? api { get; set; }
+
+        [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            if (api is LegacyBanchoAPIAccess)
+                countryRankDisplay.Alpha = 0;
 
             if (statisticsProvider != null)
                 statisticsProvider.StatisticsUpdated += onStatisticsUpdated;

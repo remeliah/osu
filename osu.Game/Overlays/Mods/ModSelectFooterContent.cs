@@ -10,6 +10,8 @@ using osu.Framework.Graphics.Containers;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Online.API;
+using osu.Game.Online.Bancho;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -19,6 +21,9 @@ namespace osu.Game.Overlays.Mods
 {
     public partial class ModSelectFooterContent : VisibilityContainer
     {
+        [Resolved(canBeNull: true)]
+        private IAPIProvider? api { get; set; }
+
         private readonly ModSelectOverlay overlay;
 
         private RankingInformationDisplay? rankingInformationDisplay;
@@ -127,8 +132,12 @@ namespace osu.Game.Overlays.Mods
 
             if (rankingInformationDisplay != null && workingBeatmap != null)
             {
-                var scoreMultiplierCalculator = Ruleset.Value?.CreateInstance().CreateScoreMultiplierCalculator(new ScoreMultiplierContext(workingBeatmap.BeatmapInfo.Difficulty));
+                Ruleset? ruleset = Ruleset.Value?.CreateInstance();
+                var scoreMultiplierCalculator = ruleset?.CreateScoreMultiplierCalculator(new ScoreMultiplierContext(workingBeatmap.BeatmapInfo.Difficulty));
                 double multiplier = scoreMultiplierCalculator?.CalculateFor(ActiveMods.Value) ?? 1;
+
+                if (api is LegacyBanchoAPIAccess && ruleset != null)
+                    multiplier = LegacyModConversion.GetStableDisplayMultiplier(ruleset, ActiveMods.Value, multiplier);
 
                 rankingInformationDisplay.ModMultiplier.Value = multiplier;
                 rankingInformationDisplay.Ranked.Value = ActiveMods.Value.All(m => m.Ranked);

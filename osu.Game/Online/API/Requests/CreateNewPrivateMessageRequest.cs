@@ -10,23 +10,23 @@ namespace osu.Game.Online.API.Requests
 {
     public class CreateNewPrivateMessageRequest : APIRequest<CreateNewPrivateMessageResponse>
     {
-        private readonly APIUser user;
-        private readonly Message message;
+        public readonly APIUser TargetUser;
+        public readonly Message OutgoingMessage;
 
         public CreateNewPrivateMessageRequest(APIUser user, Message message)
         {
-            this.user = user;
-            this.message = message;
+            TargetUser = user;
+            OutgoingMessage = message;
         }
 
         protected override WebRequest CreateWebRequest()
         {
             var req = base.CreateWebRequest();
             req.Method = HttpMethod.Post;
-            req.AddParameter(@"target_id", user.Id.ToString());
-            req.AddParameter(@"message", message.Content);
-            req.AddParameter(@"is_action", message.IsAction.ToString().ToLowerInvariant());
-            req.AddParameter(@"uuid", message.Uuid);
+            req.AddParameter(@"target_id", TargetUser.Id.ToString());
+            req.AddParameter(@"message", OutgoingMessage.Content);
+            req.AddParameter(@"is_action", OutgoingMessage.IsAction.ToString().ToLowerInvariant());
+            req.AddParameter(@"uuid", OutgoingMessage.Uuid);
             return req;
         }
 

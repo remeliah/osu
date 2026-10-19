@@ -16,6 +16,10 @@ namespace osu.Game.Online.API.Requests
             this.noVideo = noVideo;
         }
 
+        internal bool NoVideo => noVideo;
+
+        internal void TriggerLegacySuccess(string filename) => TriggerSuccess(filename);
+
         protected override WebRequest CreateWebRequest()
         {
             var req = base.CreateWebRequest();

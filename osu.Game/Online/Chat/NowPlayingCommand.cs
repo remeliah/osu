@@ -58,25 +58,30 @@ namespace osu.Game.Online.Chat
             string verb;
 
             int beatmapOnlineID;
+            int beatmapSetOnlineID;
             string beatmapDisplayTitle;
+            (int sourceBeatmapOnlineID, int sourceBeatmapSetOnlineID) = currentBeatmap.Value.GetOnlineIds();
 
             switch (userActivity.Value)
             {
                 case UserActivity.InGame game:
                     verb = "playing";
-                    beatmapOnlineID = game.BeatmapID;
+                    beatmapOnlineID = game.BeatmapID > 0 ? game.BeatmapID : sourceBeatmapOnlineID;
+                    beatmapSetOnlineID = sourceBeatmapSetOnlineID;
                     beatmapDisplayTitle = game.BeatmapDisplayTitle;
                     break;
 
                 case UserActivity.EditingBeatmap edit:
                     verb = "editing";
-                    beatmapOnlineID = edit.BeatmapID;
+                    beatmapOnlineID = edit.BeatmapID > 0 ? edit.BeatmapID : sourceBeatmapOnlineID;
+                    beatmapSetOnlineID = sourceBeatmapSetOnlineID;
                     beatmapDisplayTitle = edit.BeatmapDisplayTitle;
                     break;
 
                 default:
                     verb = "listening to";
-                    beatmapOnlineID = currentBeatmap.Value.BeatmapInfo.OnlineID;
+                    beatmapOnlineID = sourceBeatmapOnlineID;
+                    beatmapSetOnlineID = sourceBeatmapSetOnlineID;
                     beatmapDisplayTitle = currentBeatmap.Value.BeatmapInfo.GetDisplayTitle();
                     break;
             }
@@ -95,14 +100,23 @@ namespace osu.Game.Online.Chat
 
             string getBeatmapPart()
             {
-                return beatmapOnlineID > 0 ? $"[{api.Endpoints.WebsiteUrl}/b/{beatmapOnlineID} {beatmapDisplayTitle}]" : beatmapDisplayTitle;
+                if (beatmapOnlineID <= 0)
+                    return beatmapDisplayTitle;
+
+                return FormatBanchoBeatmapLink(api.Endpoints.WebsiteUrl, beatmapSetOnlineID, beatmapOnlineID, beatmapDisplayTitle);
             }
 
             string getRulesetPart()
             {
                 if (userActivity.Value is not UserActivity.InGame) return string.Empty;
 
-                return $"<{currentRuleset.Value.Name}>";
+                return currentRuleset.Value.OnlineID switch
+                {
+                    1 => "<Taiko>",
+                    2 => "<CatchTheBeat>",
+                    3 => "<osu!mania>",
+                    _ => string.Empty,
+                };
             }
 
             string getModPart()
@@ -115,19 +129,44 @@ namespace osu.Game.Online.Chat
                 }
 
                 StringBuilder modsString = new StringBuilder();
-
-                foreach (var mod in selectedMods.Value.Where(mod => mod.Type == ModType.DifficultyIncrease))
+                foreach (var mod in selectedMods.Value.Where(mod => mod is not ModClassic and not ModNoMod))
                 {
-                    modsString.Append($"+{mod.Acronym} ");
+                    string? formatted = mod.Acronym switch
+                    {
+                        "EZ" => "-Easy",
+                        "NF" => "-NoFail",
+                        "HD" => "+Hidden",
+                        "PF" => "+Perfect",
+                        "SD" => "+SuddenDeath",
+                        "HR" => "+HardRock",
+                        "NC" => "+Nightcore",
+                        "DT" => "+DoubleTime",
+                        "HT" => "-HalfTime",
+                        "FL" => "+Flashlight",
+                        "SO" => "-SpunOut",
+                        "AT" => "|Autoplay|",
+                        "CN" => "|Cinema|",
+                        "RX" => "~Relax~",
+                        "AP" => "~Autopilot~",
+                        "TP" => "~Target~",
+                        "1K" or "2K" or "3K" or "4K" or "5K" or "6K" or "7K" or "8K" or "9K" or "10K" or "12K" or "14K" or "16K" or "18K" => $"|{mod.Acronym}|",
+                        _ => null,
+                    };
+
+                    if (formatted != null)
+                        modsString.Append(formatted).Append(' ');
                 }
 
-                foreach (var mod in selectedMods.Value.Where(mod => mod.Type != ModType.DifficultyIncrease))
-                {
-                    modsString.Append($"-{mod.Acronym} ");
-                }
-
-                return modsString.ToString().Trim();
+                return modsString.ToString().TrimEnd();
             }
+        }
+
+        internal static string FormatBanchoBeatmapLink(string websiteUrl, int beatmapSetId, int beatmapId, string displayTitle)
+        {
+            var website = new System.Uri(websiteUrl);
+            int syntacticSetId = beatmapSetId > 0 ? beatmapSetId : 0;
+            string url = $"{website.GetLeftPart(System.UriPartial.Authority)}/beatmapsets/{syntacticSetId}#/{beatmapId}";
+            return $"[{url} {displayTitle}]";
         }
     }
 }

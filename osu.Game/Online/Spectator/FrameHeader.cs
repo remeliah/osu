@@ -91,6 +91,12 @@ namespace osu.Game.Online.Spectator
         public int[]? Pauses { get; set; }
 
         /// <summary>
+        /// Exact stable ScoreV1 total, when available.
+        /// </summary>
+        [Key(10)]
+        public long? LegacyTotalScore { get; set; }
+
+        /// <summary>
         /// Construct header summary information from a point-in-time reference to a score which is actively being played.
         /// </summary>
         /// <param name="score">The score for reference.</param>
@@ -98,6 +104,7 @@ namespace osu.Game.Online.Spectator
         public FrameHeader(ScoreInfo score, ScoreProcessorStatistics statistics)
         {
             TotalScore = score.TotalScore;
+            LegacyTotalScore = score.LegacyTotalScore;
             Accuracy = score.Accuracy;
             Combo = score.Combo;
             MaxCombo = score.MaxCombo;
@@ -122,7 +129,8 @@ namespace osu.Game.Online.Spectator
             DateTimeOffset receivedTime,
             APIMod[] mods,
             long? totalScoreWithoutMods,
-            int[]? pauses)
+            int[]? pauses,
+            long? legacyTotalScore = null)
         {
             TotalScore = totalScore;
             Accuracy = accuracy;
@@ -134,6 +142,7 @@ namespace osu.Game.Online.Spectator
             Mods = mods;
             TotalScoreWithoutMods = totalScoreWithoutMods;
             Pauses = pauses;
+            LegacyTotalScore = legacyTotalScore;
         }
     }
 }

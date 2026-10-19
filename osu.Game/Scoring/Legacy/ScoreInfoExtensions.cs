@@ -13,16 +13,24 @@ namespace osu.Game.Scoring.Legacy
     public static class ScoreInfoExtensions
     {
         public static long GetDisplayScore(this ScoreProcessor scoreProcessor, ScoringMode mode)
-            => getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
+            => mode == ScoringMode.Classic && scoreProcessor.LegacyTotalScore.Value is long legacyScore
+                ? legacyScore
+                : getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
 
         public static long GetDisplayScore(this ScoreInfo scoreInfo, ScoringMode mode)
-            => getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+            => mode == ScoringMode.Classic && scoreInfo.LegacyTotalScore is long legacyScore
+                ? legacyScore
+                : getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
 
         public static long GetDisplayScore(this SoloScoreInfo soloScoreInfo, ScoringMode mode)
-            => getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
+            => mode == ScoringMode.Classic && soloScoreInfo.LegacyTotalScore is int legacyScore
+                ? legacyScore
+                : getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
 
         public static long GetDisplayScore(this MultiplayerScore multiplayerScore, ScoringMode mode)
-            => getDisplayScore(multiplayerScore.RulesetId, multiplayerScore.TotalScore, mode, multiplayerScore.MaximumStatistics);
+            => mode == ScoringMode.Classic && multiplayerScore.LegacyTotalScore is long legacyScore
+                ? legacyScore
+                : getDisplayScore(multiplayerScore.RulesetId, multiplayerScore.TotalScore, mode, multiplayerScore.MaximumStatistics);
 
         private static long getDisplayScore(int rulesetId, long score, ScoringMode mode, IReadOnlyDictionary<HitResult, int> maximumStatistics)
         {
@@ -70,6 +78,9 @@ namespace osu.Game.Scoring.Legacy
 
         public static int? GetCountGeki(this ScoreInfo scoreInfo)
         {
+            if (scoreInfo.LegacyCountGeki.HasValue)
+                return scoreInfo.LegacyCountGeki.Value;
+
             switch (scoreInfo.Ruleset.OnlineID)
             {
                 case 1:
@@ -84,6 +95,8 @@ namespace osu.Game.Scoring.Legacy
 
         public static void SetCountGeki(this ScoreInfo scoreInfo, int value)
         {
+            scoreInfo.LegacyCountGeki = value;
+
             switch (scoreInfo.Ruleset.OnlineID)
             {
                 // For legacy scores, Geki indicates hit300 + perfect strong note hit.
@@ -104,6 +117,9 @@ namespace osu.Game.Scoring.Legacy
 
         public static int? GetCountKatu(this ScoreInfo scoreInfo)
         {
+            if (scoreInfo.LegacyCountKatu.HasValue)
+                return scoreInfo.LegacyCountKatu.Value;
+
             switch (scoreInfo.Ruleset.OnlineID)
             {
                 // For taiko, Katu is bundled into Geki.
@@ -122,6 +138,8 @@ namespace osu.Game.Scoring.Legacy
 
         public static void SetCountKatu(this ScoreInfo scoreInfo, int value)
         {
+            scoreInfo.LegacyCountKatu = value;
+
             switch (scoreInfo.Ruleset.OnlineID)
             {
                 // For legacy scores, Katu indicates hit100 + perfect strong note hit.

@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Scoring;
+using osu.Game.Scoring.Legacy;
 
 namespace osu.Game.Rulesets.Scoring
 {
@@ -63,6 +64,35 @@ namespace osu.Game.Rulesets.Scoring
         /// The purpose of this property is to enable future lossless rebalances of mod multipliers.
         /// </remarks>
         public readonly BindableLong TotalScoreWithoutMods = new BindableLong { MinValue = 0 };
+
+        /// <summary>
+        /// Exact osu!stable ScoreV1 total tracked from gameplay judgements, when
+        /// this play is running under classic stable-compatible rules.
+        /// </summary>
+        public readonly Bindable<long?> LegacyTotalScore = new Bindable<long?>();
+
+        /// <summary>
+        /// Combo state produced by the stable rules, when ScoreV1 tracking is active.
+        /// </summary>
+        public readonly BindableInt LegacyCombo = new BindableInt();
+
+        /// <summary>
+        /// Maximum combo produced by the stable rules, when ScoreV1 tracking is active.
+        /// </summary>
+        public readonly BindableInt LegacyMaxCombo = new BindableInt();
+
+        /// <summary>
+        /// Stable-compatible judgement counts used while legacy score tracking
+        /// is active. These remain null for rulesets whose lazer counts already
+        /// match stable.
+        /// </summary>
+        public IReadOnlyDictionary<HitResult, int>? LegacyStatistics { get; set; }
+
+        public IReadOnlyDictionary<HitResult, int>? LegacyMaximumStatistics { get; set; }
+
+        public int? LegacyCountGeki { get; set; }
+
+        public int? LegacyCountKatu { get; set; }
 
         /// <summary>
         /// The current accuracy.
@@ -496,6 +526,48 @@ namespace osu.Game.Rulesets.Scoring
             // Populate total score after everything else.
             score.TotalScoreWithoutMods = TotalScoreWithoutMods.Value;
             score.TotalScore = TotalScore.Value;
+            score.LegacyTotalScore = LegacyTotalScore.Value;
+            score.LegacyCountGeki = LegacyCountGeki;
+            score.LegacyCountKatu = LegacyCountKatu;
+
+            if (LegacyTotalScore.Value != null)
+            {
+                score.Combo = LegacyCombo.Value;
+                score.MaxCombo = LegacyMaxCombo.Value;
+
+                if (LegacyStatistics != null && LegacyMaximumStatistics != null)
+                {
+                    score.Statistics.Clear();
+
+                    foreach (var result in HitResultExtensions.ALL_TYPES)
+                        score.Statistics[result] = LegacyStatistics.GetValueOrDefault(result);
+
+                    // Preserve non-basic maximum results (slider ticks, tails,
+                    // and other combo-affecting objects), replacing only the
+                    // top-level basic judgements whose stable grouping differs.
+                    foreach (var result in HitResultExtensions.ALL_TYPES.Where(result => result.IsBasic()))
+                        score.MaximumStatistics[result] = LegacyMaximumStatistics.GetValueOrDefault(result);
+
+                    double achieved = LegacyStatistics.Where(pair => pair.Key.IsBasic())
+                                                      .Sum(pair => (double)GetBaseScoreForResult(pair.Key) * pair.Value);
+                    double maximum = LegacyMaximumStatistics.Where(pair => pair.Key.IsBasic())
+                                                             .Sum(pair => (double)GetBaseScoreForResult(pair.Key) * pair.Value);
+                    score.Accuracy = maximum > 0 ? achieved / maximum : 1;
+
+                }
+
+                // Rank rules in stable differ from lazer even in modes whose
+                // result counters already match (notably strict boundaries in
+                // catch and the ratio-based osu/taiko rules).
+                if (score.Rank != ScoreRank.F)
+                {
+                    score.Rank = LegacyScoreRankCalculator.Calculate(score.RulesetID, score.Passed,
+                        score.GetCount300() ?? 0, score.GetCount100() ?? 0, score.GetCount50() ?? 0,
+                        score.GetCountGeki() ?? 0, score.GetCountKatu() ?? 0, score.GetCountMiss() ?? 0);
+                    foreach (var mod in Mods.Value.OfType<IApplicableToScoreProcessor>())
+                        score.Rank = mod.AdjustRank(score.Rank, score.Accuracy);
+                }
+            }
         }
 
         /// <summary>

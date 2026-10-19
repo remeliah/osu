@@ -84,6 +84,8 @@ namespace osu.Game.Online.Leaderboards
 
                 default:
                 {
+                    bool isLegacyBancho = api is LegacyBanchoAPIAccess;
+
                     if (newCriteria.Sorting != LeaderboardSortMode.Score)
                         throw new NotSupportedException($@"Requesting online scores with a {nameof(LeaderboardSortMode)} other than {nameof(LeaderboardSortMode.Score)} is not supported");
 
@@ -99,13 +101,16 @@ namespace osu.Game.Online.Leaderboards
                         return;
                     }
 
-                    if (newCriteria.Beatmap.OnlineID <= 0 || newCriteria.Beatmap.Status <= BeatmapOnlineStatus.Pending)
+                    // Stable identifies beatmaps primarily by MD5. Imported .osu files can retain a
+                    // valid stable checksum even when lazer's metadata lookup cleared their online ID.
+                    if ((!isLegacyBancho && (newCriteria.Beatmap.OnlineID <= 0 || newCriteria.Beatmap.Status <= BeatmapOnlineStatus.Pending))
+                        || (isLegacyBancho && string.IsNullOrEmpty(newCriteria.Beatmap.MD5Hash)))
                     {
                         scores.Value = LeaderboardScores.Failure(LeaderboardFailState.BeatmapUnavailable);
                         return;
                     }
 
-                    if ((newCriteria.Scope.RequiresSupporter(newCriteria.ExactMods != null)) && !api.LocalUser.Value.IsSupporter)
+                    if (!isLegacyBancho && (newCriteria.Scope.RequiresSupporter(newCriteria.ExactMods != null)) && !api.LocalUser.Value.IsSupporter)
                     {
                         scores.Value = LeaderboardScores.Failure(LeaderboardFailState.NotSupporter);
                         return;
@@ -128,11 +133,23 @@ namespace osu.Game.Online.Leaderboards
                             requestMods = newCriteria.ExactMods;
                     }
 
-                    var newRequest = new GetScoresRequest(newCriteria.Beatmap, newCriteria.Ruleset, newCriteria.Scope, requestMods);
+                    var newRequest = new GetScoresRequest(newCriteria.Beatmap, newCriteria.Ruleset, newCriteria.Scope, requestMods,
+                        allowMissingOnlineId: isLegacyBancho,
+                        filterByMods: newCriteria.ExactMods != null && !newCriteria.LegacyRulesetOnly);
                     newRequest.Success += response =>
                     {
                         if (inFlightOnlineRequest != null && !newRequest.Equals(inFlightOnlineRequest))
                             return;
+
+                        // Stable sends a successful, empty response with a status-only
+                        // header for Pending/WIP maps. This means no leaderboard exists,
+                        // rather than an available leaderboard with zero records.
+                        if (isLegacyBancho && newRequest.LegacyBeatmapStatus is <= BeatmapOnlineStatus.Pending)
+                        {
+                            inFlightOnlineRequest = null;
+                            scores.Value = LeaderboardScores.Failure(LeaderboardFailState.BeatmapUnavailable);
+                            return;
+                        }
 
                         var result = LeaderboardScores.Success
                         (
@@ -211,7 +228,8 @@ namespace osu.Game.Online.Leaderboards
         RulesetInfo? Ruleset,
         BeatmapLeaderboardScope Scope,
         Mod[]? ExactMods,
-        LeaderboardSortMode Sorting = LeaderboardSortMode.Score
+        LeaderboardSortMode Sorting = LeaderboardSortMode.Score,
+        bool LegacyRulesetOnly = false
     );
 
     public record LeaderboardScores

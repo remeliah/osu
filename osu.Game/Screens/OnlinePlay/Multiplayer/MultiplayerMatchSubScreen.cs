@@ -24,6 +24,7 @@ using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.Bancho;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
@@ -264,103 +265,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                                                     }
                                                                 },
                                                                 null,
-                                                                new GridContainer
-                                                                {
-                                                                    RelativeSizeAxes = Axes.Both,
-                                                                    RowDimensions = new[]
-                                                                    {
-                                                                        new Dimension(GridSizeMode.AutoSize),
-                                                                        new Dimension(GridSizeMode.AutoSize),
-                                                                        new Dimension(GridSizeMode.Absolute, 5),
-                                                                        new Dimension(),
-                                                                        new Dimension(GridSizeMode.AutoSize),
-                                                                        new Dimension(GridSizeMode.AutoSize),
-                                                                    },
-                                                                    Content = new[]
-                                                                    {
-                                                                        new Drawable[]
-                                                                        {
-                                                                            new SectionHeader(OnlinePlayStrings.MultiplayerBeatmapQueue)
-                                                                        },
-                                                                        new Drawable[]
-                                                                        {
-                                                                            new AddItemButton
-                                                                            {
-                                                                                RelativeSizeAxes = Axes.X,
-                                                                                Height = 30,
-                                                                                Text = "Add item",
-                                                                                Action = () => ShowSongSelect()
-                                                                            },
-                                                                        },
-                                                                        null,
-                                                                        new Drawable[]
-                                                                        {
-                                                                            new MultiplayerPlaylist
-                                                                            {
-                                                                                RelativeSizeAxes = Axes.Both,
-                                                                                RequestEdit = ShowSongSelect,
-                                                                                RequestResults = showResults
-                                                                            }
-                                                                        },
-                                                                        new Drawable[]
-                                                                        {
-                                                                            userModsSection = new FillFlowContainer
-                                                                            {
-                                                                                RelativeSizeAxes = Axes.X,
-                                                                                AutoSizeAxes = Axes.Y,
-                                                                                Margin = new MarginPadding { Top = 10 },
-                                                                                Alpha = 0,
-                                                                                Children = new Drawable[]
-                                                                                {
-                                                                                    new SectionHeader("Extra mods"),
-                                                                                    new FillFlowContainer
-                                                                                    {
-                                                                                        AutoSizeAxes = Axes.Both,
-                                                                                        Direction = FillDirection.Horizontal,
-                                                                                        Spacing = new Vector2(10, 0),
-                                                                                        Children = new Drawable[]
-                                                                                        {
-                                                                                            new UserModSelectButton
-                                                                                            {
-                                                                                                Anchor = Anchor.CentreLeft,
-                                                                                                Origin = Anchor.CentreLeft,
-                                                                                                Width = 90,
-                                                                                                Height = 30,
-                                                                                                Text = "Select",
-                                                                                                Action = showUserModSelect,
-                                                                                            },
-                                                                                            new MultiplayerUserModDisplay
-                                                                                            {
-                                                                                                Anchor = Anchor.CentreLeft,
-                                                                                                Origin = Anchor.CentreLeft,
-                                                                                                Scale = new Vector2(0.8f),
-                                                                                            },
-                                                                                        }
-                                                                                    },
-                                                                                }
-                                                                            }
-                                                                        },
-                                                                        new Drawable[]
-                                                                        {
-                                                                            userStyleSection = new FillFlowContainer
-                                                                            {
-                                                                                RelativeSizeAxes = Axes.X,
-                                                                                AutoSizeAxes = Axes.Y,
-                                                                                Margin = new MarginPadding { Top = 10 },
-                                                                                Alpha = 0,
-                                                                                Children = new Drawable[]
-                                                                                {
-                                                                                    new SectionHeader(OnlinePlayStrings.Difficulty),
-                                                                                    userStyleDisplayContainer = new Container<DrawableRoomPlaylistItem>
-                                                                                    {
-                                                                                        RelativeSizeAxes = Axes.X,
-                                                                                        AutoSizeAxes = Axes.Y
-                                                                                    }
-                                                                                }
-                                                                            },
-                                                                        },
-                                                                    },
-                                                                },
+                                                                createBeatmapColumn(),
                                                                 null,
                                                                 new GridContainer
                                                                 {
@@ -425,6 +330,129 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                 Beatmap = { BindTarget = Beatmap },
                 Ruleset = { BindTarget = Ruleset },
             });
+        }
+
+        private GridContainer createBeatmapColumn()
+        {
+            var modsRow = new Drawable[]
+            {
+                userModsSection = new FillFlowContainer
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    Margin = new MarginPadding { Top = 10 },
+                    Alpha = 0,
+                    Children = new Drawable[]
+                    {
+                        new SectionHeader("Extra mods"),
+                        new FillFlowContainer
+                        {
+                            AutoSizeAxes = Axes.Both,
+                            Direction = FillDirection.Horizontal,
+                            Spacing = new Vector2(10, 0),
+                            Children = new Drawable[]
+                            {
+                                new UserModSelectButton
+                                {
+                                    Anchor = Anchor.CentreLeft,
+                                    Origin = Anchor.CentreLeft,
+                                    Width = 90,
+                                    Height = 30,
+                                    Text = "Select",
+                                    Action = showUserModSelect,
+                                },
+                                new MultiplayerUserModDisplay
+                                {
+                                    Anchor = Anchor.CentreLeft,
+                                    Origin = Anchor.CentreLeft,
+                                    Scale = new Vector2(0.8f),
+                                },
+                            }
+                        },
+                    }
+                }
+            };
+
+            var styleRow = new Drawable[]
+            {
+                userStyleSection = new FillFlowContainer
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    Margin = new MarginPadding { Top = 10 },
+                    Alpha = 0,
+                    Children = new Drawable[]
+                    {
+                        new SectionHeader(OnlinePlayStrings.Difficulty),
+                        userStyleDisplayContainer = new Container<DrawableRoomPlaylistItem>
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            AutoSizeAxes = Axes.Y
+                        }
+                    }
+                },
+            };
+
+            // Stable multiplayer has one active beatmap, not a lazer playlist queue.
+            // Keep the synthetic single playlist item in the protocol adapter only,
+            // where it is required by the common multiplayer model.
+            if (client is LegacyBanchoMultiplayerClient)
+            {
+                return new GridContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    RowDimensions = new[]
+                    {
+                        new Dimension(GridSizeMode.AutoSize),
+                        new Dimension(GridSizeMode.AutoSize),
+                    },
+                    Content = new[]
+                    {
+                        modsRow,
+                        styleRow,
+                    },
+                };
+            }
+
+            return new GridContainer
+            {
+                RelativeSizeAxes = Axes.Both,
+                RowDimensions = new[]
+                {
+                    new Dimension(GridSizeMode.AutoSize),
+                    new Dimension(GridSizeMode.AutoSize),
+                    new Dimension(GridSizeMode.Absolute, 5),
+                    new Dimension(),
+                    new Dimension(GridSizeMode.AutoSize),
+                    new Dimension(GridSizeMode.AutoSize),
+                },
+                Content = new[]
+                {
+                    new Drawable[] { new SectionHeader(OnlinePlayStrings.MultiplayerBeatmapQueue) },
+                    new Drawable[]
+                    {
+                        new AddItemButton
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Height = 30,
+                            Text = "Add item",
+                            Action = () => ShowSongSelect()
+                        },
+                    },
+                    null,
+                    new Drawable[]
+                    {
+                        new MultiplayerPlaylist
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            RequestEdit = ShowSongSelect,
+                            RequestResults = showResults
+                        }
+                    },
+                    modsRow,
+                    styleRow,
+                },
+            };
         }
 
         protected override void LoadComplete()
@@ -674,7 +702,22 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
 
             // Update global gameplay state to correspond to the new selection.
             // Retrieve the corresponding local beatmap, since we can't directly use the playlist's beatmap info
-            var localBeatmap = beatmapManager.QueryOnlineBeatmapId(gameplayBeatmapId);
+            BeatmapInfo? localBeatmap;
+
+            if (client is LegacyBanchoMultiplayerClient
+                && gameplayBeatmapId == item.BeatmapID
+                && !string.IsNullOrEmpty(item.BeatmapChecksum))
+            {
+                // Stable multiplayer identifies the exact playable difficulty by MD5.
+                // Imported stable maps may no longer retain an online ID in lazer's
+                // database, so resolving by ID alone incorrectly produces a default
+                // working beatmap and aborts the MATCH_START handoff.
+                string checksum = item.BeatmapChecksum;
+                localBeatmap = beatmapManager.QueryBeatmap(b => b.MD5Hash == checksum);
+            }
+            else
+                localBeatmap = beatmapManager.QueryOnlineBeatmapId(gameplayBeatmapId);
+
             Beatmap.Value = beatmapManager.GetWorkingBeatmap(localBeatmap);
             Ruleset.Value = ruleset;
             Mods.Value = client.LocalUser.Mods.Concat(item.RequiredMods).Select(m => m.ToMod(rulesetInstance)).ToArray();

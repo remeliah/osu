@@ -14,5 +14,6 @@ namespace osu.Game.Rulesets.Mods
         public override IconUsage? Icon => OsuIcon.ModRelax;
         public override ModType Type => ModType.Automation;
         public override Type[] IncompatibleMods => new[] { typeof(ModAutoplay) };
+        public sealed override bool Ranked => UsesDefaultConfiguration;
     }
 }

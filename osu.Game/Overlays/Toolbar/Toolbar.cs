@@ -105,6 +105,7 @@ namespace osu.Game.Overlays.Toolbar
                                         Children = new Drawable[]
                                         {
                                             new ToolbarSettingsButton(),
+                                            new ToolbarServerSwitcherButton(),
                                             new ToolbarHomeButton
                                             {
                                                 Action = () => OnHome?.Invoke()
@@ -162,10 +163,6 @@ namespace osu.Game.Overlays.Toolbar
                                         AutoSizeAxes = Axes.X,
                                         Children = new Drawable[]
                                         {
-                                            new ToolbarNewsButton(),
-                                            new ToolbarChangelogButton(),
-                                            new ToolbarWikiButton(),
-                                            new ToolbarRankingsButton(),
                                             new ToolbarBeatmapListingButton(),
                                             new ToolbarChatButton(),
                                             new ToolbarSocialButton(),

@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -77,6 +78,45 @@ namespace osu.Game.Tests.Beatmaps
             var ruleset = new Mock<IRulesetInfo>();
 
             Assert.Throws<RulesetLoadException>(() => working.GetPlayableBeatmap(ruleset.Object));
+        }
+
+        [Test]
+        public void TestGetOnlineIdsFallsBackToSourceMetadata()
+        {
+            var storedInfo = new BeatmapInfo
+            {
+                OnlineID = -1,
+                BeatmapSet = new BeatmapSetInfo { OnlineID = 2587618 },
+            };
+            var decoded = new Beatmap
+            {
+                BeatmapInfo = new BeatmapInfo
+                {
+                    OnlineID = 5772355,
+                    BeatmapSet = new BeatmapSetInfo { OnlineID = 2587618 },
+                },
+            };
+
+            var working = new SourceMetadataWorkingBeatmap(storedInfo, decoded);
+
+            Assert.That(working.GetOnlineIds(), Is.EqualTo((5772355, 2587618)));
+        }
+
+        private class SourceMetadataWorkingBeatmap : WorkingBeatmap
+        {
+            private readonly IBeatmap decoded;
+
+            public SourceMetadataWorkingBeatmap(BeatmapInfo storedInfo, IBeatmap decoded)
+                : base(storedInfo, null)
+            {
+                this.decoded = decoded;
+            }
+
+            protected override IBeatmap GetBeatmap() => decoded;
+            public override osu.Framework.Graphics.Textures.Texture GetBackground() => throw new NotImplementedException();
+            protected override osu.Framework.Audio.Track.Track GetBeatmapTrack() => throw new NotImplementedException();
+            protected internal override osu.Game.Skinning.ISkin GetSkin() => throw new NotImplementedException();
+            public override Stream GetStream(string storagePath) => Stream.Null;
         }
 
         public class TestNeverLoadsWorkingBeatmap : TestWorkingBeatmap

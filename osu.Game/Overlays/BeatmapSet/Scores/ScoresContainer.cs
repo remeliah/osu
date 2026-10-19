@@ -252,7 +252,11 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
             noTeamPlaceholder.Hide();
             notSupporterPlaceholder.Hide();
 
-            if (Beatmap.Value == null || Beatmap.Value.OnlineID <= 0 || (Beatmap.Value.Status <= BeatmapOnlineStatus.Pending))
+            bool isLegacyBancho = api is LegacyBanchoAPIAccess;
+
+            if (Beatmap.Value == null
+                || (!isLegacyBancho && (Beatmap.Value.OnlineID <= 0 || Beatmap.Value.Status <= BeatmapOnlineStatus.Pending))
+                || (isLegacyBancho && string.IsNullOrEmpty(Beatmap.Value.MD5Hash)))
             {
                 Scores = null;
                 Hide();
@@ -266,7 +270,7 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                 return;
             }
 
-            if (scope.Value.RequiresSupporter(modSelector.SelectedMods.Count > 0) && !userIsSupporter)
+            if (!isLegacyBancho && scope.Value.RequiresSupporter(modSelector.SelectedMods.Count > 0) && !userIsSupporter)
             {
                 Scores = null;
                 notSupporterPlaceholder.Show();
@@ -276,7 +280,9 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
             Show();
             loading.Show();
 
-            getScoresRequest = new GetScoresRequest(Beatmap.Value, Beatmap.Value.Ruleset, scope.Value, modSelector.SelectedMods);
+            getScoresRequest = new GetScoresRequest(Beatmap.Value, Beatmap.Value.Ruleset, scope.Value, modSelector.SelectedMods,
+                allowMissingOnlineId: isLegacyBancho,
+                filterByMods: modSelector.SelectedMods.Count > 0);
             getScoresRequest.Success += scores =>
             {
                 Scores = scores;

@@ -326,6 +326,9 @@ namespace osu.Game.Rulesets.Mania
 
         public ILegacyScoreSimulator CreateLegacyScoreSimulator() => new ManiaLegacyScoreSimulator();
 
+        public ILegacyScoreProcessor CreateLegacyScoreProcessor(IWorkingBeatmap workingBeatmap, IBeatmap playableBeatmap, IReadOnlyList<Mod> mods, int maximumJudgements)
+            => new ManiaLegacyScoreProcessor(workingBeatmap, playableBeatmap, mods);
+
         public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new ManiaReplayFrame();
 
         public override IRulesetConfigManager CreateConfig(SettingsStore? settings) => new ManiaRulesetConfigManager(settings, RulesetInfo);

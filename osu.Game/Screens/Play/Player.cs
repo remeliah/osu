@@ -4,6 +4,7 @@
 #nullable disable
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -30,6 +31,7 @@ using osu.Game.Overlays;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Rulesets.Scoring.Legacy;
 using osu.Game.Rulesets.UI;
 using osu.Game.Rulesets.UI.Scrolling;
 using osu.Game.Scoring;
@@ -64,7 +66,15 @@ namespace osu.Game.Screens.Play
 
         protected override bool PlayExitSound => !isRestarting;
 
-        protected override UserActivity InitialActivity => new UserActivity.InSoloGame(Beatmap.Value.BeatmapInfo, Ruleset.Value);
+        protected override UserActivity InitialActivity
+        {
+            get
+            {
+                var activity = new UserActivity.InSoloGame(Beatmap.Value.BeatmapInfo, Ruleset.Value);
+                activity.BeatmapID = Beatmap.Value.GetOnlineIds().BeatmapID;
+                return activity;
+            }
+        }
 
         public override float BackgroundParallaxAmount => 0.1f;
 
@@ -175,7 +185,8 @@ namespace osu.Game.Screens.Play
         /// Whether failing should be allowed.
         /// By default, this checks whether all selected mods allow failing.
         /// </summary>
-        protected virtual bool CheckModsAllowFailure() => GameplayState.Mods.OfType<IApplicableFailOverride>().All(m => m.PerformFail());
+        protected virtual bool CheckModsAllowFailure() => !GameplayState.Mods.OfType<ModRelax>().Any()
+                                                            && GameplayState.Mods.OfType<IApplicableFailOverride>().All(m => m.PerformFail());
 
         public readonly PlayerConfiguration Configuration;
 
@@ -224,11 +235,11 @@ namespace osu.Game.Screens.Play
         }
 
         [BackgroundDependencyLoader(true)]
-        private void load(OsuConfigManager config, OsuGameBase game, CancellationToken cancellationToken)
+        private void load(OsuConfigManager config, OsuGameBase game, IAPIProvider api, CancellationToken cancellationToken)
         {
-            var gameplayMods = Mods.Value.Select(m => m.DeepClone()).ToArray();
+            var gameplayModList = Mods.Value.Select(m => m.DeepClone()).ToList();
 
-            if (gameplayMods.Any(m => m is UnknownMod))
+            if (gameplayModList.Any(m => m is UnknownMod))
             {
                 Logger.Log("Gameplay was started with an unknown mod applied.", level: LogLevel.Important);
                 return;
@@ -237,10 +248,12 @@ namespace osu.Game.Screens.Play
             if (Beatmap.Value is DummyWorkingBeatmap)
                 return;
 
-            IBeatmap playableBeatmap = loadPlayableBeatmap(gameplayMods, cancellationToken);
+            IBeatmap playableBeatmap = loadPlayableBeatmap(gameplayModList, api is LegacyBanchoAPIAccess, cancellationToken);
 
             if (playableBeatmap == null)
                 return;
+
+            Mod[] gameplayMods = gameplayModList.ToArray();
 
             if (!ModUtils.CheckModsBelongToRuleset(ruleset, gameplayMods))
             {
@@ -260,6 +273,37 @@ namespace osu.Game.Screens.Play
             ScoreProcessor = ruleset.CreateScoreProcessor();
             ScoreProcessor.Mods.Value = gameplayMods;
             ScoreProcessor.ApplyBeatmap(playableBeatmap);
+
+            if (api is LegacyBanchoAPIAccess
+                && ruleset is ILegacyRuleset legacyRuleset
+                && gameplayMods.OfType<ModClassic>().SingleOrDefault() is { UsesDefaultConfiguration: true })
+            {
+                int maximumJudgements = ScoreProcessor.MaximumStatistics.Where(pair => pair.Key.IsBasic()).Sum(pair => pair.Value);
+                ILegacyScoreProcessor legacyScoreProcessor = legacyRuleset.CreateLegacyScoreProcessor(Beatmap.Value, playableBeatmap, gameplayMods, maximumJudgements);
+                ScoreProcessor.LegacyTotalScore.Value = 0;
+                ScoreProcessor.LegacyStatistics = legacyScoreProcessor.Statistics;
+                ScoreProcessor.LegacyMaximumStatistics = legacyScoreProcessor.MaximumStatistics;
+                ScoreProcessor.LegacyCountGeki = legacyScoreProcessor.CountGeki;
+                ScoreProcessor.LegacyCountKatu = legacyScoreProcessor.CountKatu;
+                ScoreProcessor.NewJudgement += result =>
+                {
+                    legacyScoreProcessor.ApplyResult(result);
+                    ScoreProcessor.LegacyTotalScore.Value = legacyScoreProcessor.TotalScore;
+                    ScoreProcessor.LegacyCombo.Value = legacyScoreProcessor.Combo;
+                    ScoreProcessor.LegacyMaxCombo.Value = legacyScoreProcessor.MaxCombo;
+                    ScoreProcessor.LegacyCountGeki = legacyScoreProcessor.CountGeki;
+                    ScoreProcessor.LegacyCountKatu = legacyScoreProcessor.CountKatu;
+                };
+                ScoreProcessor.JudgementReverted += result =>
+                {
+                    legacyScoreProcessor.RevertResult(result);
+                    ScoreProcessor.LegacyTotalScore.Value = legacyScoreProcessor.TotalScore;
+                    ScoreProcessor.LegacyCombo.Value = legacyScoreProcessor.Combo;
+                    ScoreProcessor.LegacyMaxCombo.Value = legacyScoreProcessor.MaxCombo;
+                    ScoreProcessor.LegacyCountGeki = legacyScoreProcessor.CountGeki;
+                    ScoreProcessor.LegacyCountKatu = legacyScoreProcessor.CountKatu;
+                };
+            }
 
             dependencies.CacheAs(ScoreProcessor);
 
@@ -580,7 +624,7 @@ namespace osu.Game.Screens.Play
             }
         }
 
-        private IBeatmap loadPlayableBeatmap(Mod[] gameplayMods, CancellationToken cancellationToken)
+        private IBeatmap loadPlayableBeatmap(List<Mod> gameplayMods, bool useStableGameplay, CancellationToken cancellationToken)
         {
             IBeatmap playable;
 
@@ -595,9 +639,17 @@ namespace osu.Game.Screens.Play
                 if (ruleset == null)
                     throw new RulesetLoadException("Instantiation failure");
 
+                // A stable session always runs the legacy gameplay rules. This
+                // has to happen after ruleset creation, but before conversion of
+                // the beatmap, because Classic can affect playable hit objects.
+                if (useStableGameplay
+                    && gameplayMods.All(mod => mod is not ModClassic)
+                    && ruleset.CreateMod<ModClassic>() is ModClassic classic)
+                    gameplayMods.Add(classic);
+
                 try
                 {
-                    playable = Beatmap.Value.GetPlayableBeatmap(ruleset.RulesetInfo, gameplayMods, cancellationToken);
+                    playable = Beatmap.Value.GetPlayableBeatmap(ruleset.RulesetInfo, gameplayMods.ToArray(), cancellationToken);
                 }
                 catch (BeatmapInvalidForRulesetException)
                 {

@@ -1,6 +1,9 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
+using osu.Game.Beatmaps;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring.Legacy;
 
 namespace osu.Game.Rulesets
@@ -15,5 +18,10 @@ namespace osu.Game.Rulesets
         int LegacyID { get; }
 
         ILegacyScoreSimulator CreateLegacyScoreSimulator();
+
+        /// <summary>
+        /// Creates a live ScoreV1 processor for a play using the stable gameplay rules.
+        /// </summary>
+        ILegacyScoreProcessor CreateLegacyScoreProcessor(IWorkingBeatmap workingBeatmap, IBeatmap playableBeatmap, IReadOnlyList<Mod> mods, int maximumJudgements);
     }
 }

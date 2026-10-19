@@ -325,6 +325,9 @@ namespace osu.Game.Screens.Play
                 score.ScoreInfo.OnlineID = s.ID;
                 score.ScoreInfo.Position = s.Position;
 
+                if (s.StatisticsBefore != null && s.StatisticsAfter != null)
+                    userStatisticsWatcher?.PublishStatisticsUpdate(score.ScoreInfo, s.StatisticsBefore, s.StatisticsAfter);
+
                 scoreSubmissionSource.SetResult(true);
                 Logger.Log($"Score submission completed! (token:{token.Value} id:{s.ID})");
             };

@@ -22,37 +22,52 @@ namespace osu.Game.Online.API.Requests
 
         public int ScoresRequested { get; }
 
-        private readonly IBeatmapInfo beatmapInfo;
-        private readonly BeatmapLeaderboardScope scope;
-        private readonly IRulesetInfo ruleset;
-        private readonly IEnumerable<IMod> mods;
+        public IBeatmapInfo BeatmapInfo { get; }
+        public BeatmapLeaderboardScope Scope { get; }
+        public IRulesetInfo Ruleset { get; }
+        public IReadOnlyList<IMod> Mods { get; }
 
-        public GetScoresRequest(IBeatmapInfo beatmapInfo, IRulesetInfo ruleset, BeatmapLeaderboardScope scope = BeatmapLeaderboardScope.Global, IEnumerable<IMod>? mods = null)
+        /// <summary>
+        /// Whether <see cref="Mods"/> is an exact leaderboard filter rather than
+        /// only selecting a stable ruleset variant such as Relax.
+        /// </summary>
+        internal bool FilterByMods { get; }
+
+        /// <summary>
+        /// Beatmap metadata returned by the stable leaderboard header.
+        /// </summary>
+        internal BeatmapOnlineStatus? LegacyBeatmapStatus { get; set; }
+        internal int? LegacyBeatmapId { get; set; }
+        internal int? LegacyBeatmapSetId { get; set; }
+
+        public GetScoresRequest(IBeatmapInfo beatmapInfo, IRulesetInfo ruleset, BeatmapLeaderboardScope scope = BeatmapLeaderboardScope.Global, IEnumerable<IMod>? mods = null,
+                                bool allowMissingOnlineId = false, bool? filterByMods = null)
         {
-            if (beatmapInfo.OnlineID <= 0)
+            if (beatmapInfo.OnlineID <= 0 && !allowMissingOnlineId)
                 throw new InvalidOperationException($"Cannot lookup a beatmap's scores without having a populated {nameof(IBeatmapInfo.OnlineID)}.");
 
             if (scope == BeatmapLeaderboardScope.Local)
                 throw new InvalidOperationException("Should not attempt to request online scores for a local scoped leaderboard");
 
-            this.beatmapInfo = beatmapInfo;
-            this.scope = scope;
-            this.ruleset = ruleset ?? throw new ArgumentNullException(nameof(ruleset));
-            this.mods = mods ?? Array.Empty<IMod>();
+            BeatmapInfo = beatmapInfo;
+            Scope = scope;
+            Ruleset = ruleset ?? throw new ArgumentNullException(nameof(ruleset));
+            Mods = (mods ?? Array.Empty<IMod>()).ToArray();
+            FilterByMods = filterByMods ?? mods != null;
 
-            ScoresRequested = this.scope.RequiresSupporter(this.mods.Any()) ? MAX_SCORES_PER_REQUEST : DEFAULT_SCORES_PER_REQUEST;
+            ScoresRequested = Scope.RequiresSupporter(FilterByMods) ? MAX_SCORES_PER_REQUEST : DEFAULT_SCORES_PER_REQUEST;
         }
 
-        protected override string Target => $@"beatmaps/{beatmapInfo.OnlineID}/scores";
+        protected override string Target => $@"beatmaps/{BeatmapInfo.OnlineID}/scores";
 
         protected override WebRequest CreateWebRequest()
         {
             var req = base.CreateWebRequest();
 
-            req.AddParameter(@"type", scope.ToString().ToLowerInvariant());
-            req.AddParameter(@"mode", ruleset.ShortName);
+            req.AddParameter(@"type", Scope.ToString().ToLowerInvariant());
+            req.AddParameter(@"mode", Ruleset.ShortName);
 
-            foreach (var mod in mods)
+            foreach (var mod in Mods)
                 req.AddParameter(@"mods[]", mod.Acronym);
 
             req.AddParameter(@"limit", ScoresRequested.ToString(CultureInfo.InvariantCulture));
@@ -64,10 +79,11 @@ namespace osu.Game.Online.API.Requests
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
 
-            return beatmapInfo.Equals(other.beatmapInfo)
-                   && scope == other.scope
-                   && ruleset.Equals(other.ruleset)
-                   && mods.SequenceEqual(other.mods);
+            return BeatmapInfo.Equals(other.BeatmapInfo)
+                   && Scope == other.Scope
+                   && Ruleset.Equals(other.Ruleset)
+                   && FilterByMods == other.FilterByMods
+                   && Mods.SequenceEqual(other.Mods);
         }
     }
 }

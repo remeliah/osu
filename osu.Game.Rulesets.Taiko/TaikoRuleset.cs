@@ -238,6 +238,9 @@ namespace osu.Game.Rulesets.Taiko
 
         public ILegacyScoreSimulator CreateLegacyScoreSimulator() => new TaikoLegacyScoreSimulator();
 
+        public ILegacyScoreProcessor CreateLegacyScoreProcessor(IWorkingBeatmap workingBeatmap, IBeatmap playableBeatmap, IReadOnlyList<Mod> mods, int maximumJudgements)
+            => new TaikoLegacyScoreProcessor(workingBeatmap, playableBeatmap, mods);
+
         public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new TaikoReplayFrame();
 
         public override IRulesetConfigManager CreateConfig(SettingsStore? settings) => new TaikoRulesetConfigManager(settings, RulesetInfo);

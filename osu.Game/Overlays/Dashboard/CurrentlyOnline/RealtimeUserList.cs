@@ -11,6 +11,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Database;
 using osu.Game.Extensions;
+using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Metadata;
@@ -34,6 +35,9 @@ namespace osu.Game.Overlays.Dashboard.CurrentlyOnline
 
         [Resolved]
         private MetadataClient metadataClient { get; set; } = null!;
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
 
         [Cached(typeof(UserLookupCache))] // not used at the moment.
         private UserWithRankLookupCache userCache { get; set; } = new UserWithRankLookupCache();
@@ -169,21 +173,31 @@ namespace osu.Game.Overlays.Dashboard.CurrentlyOnline
             pendingUsers.Clear();
         }
 
-        private static void updateUserSpectateState(UserPresence presence, OnlineUserPanel userPanel)
+        private void updateUserSpectateState(UserPresence presence, OnlineUserPanel userPanel)
         {
-            switch (presence.Activity)
+            if (api?.LocalUser.Value?.Id == userPanel.User.Id)
             {
-                default:
-                    userPanel.CanSpectate.Value = false;
-                    break;
-
-                case UserActivity.InSoloGame:
-                case UserActivity.PlayingDailyChallenge:
-                case UserActivity.InMultiplayerGame:
-                case UserActivity.InPlaylistGame:
-                    userPanel.CanSpectate.Value = true;
-                    break;
+                userPanel.CanSpectate.Value = false;
+                return;
             }
+
+            bool canSpectate = presence.Activity switch
+            {
+                UserActivity.InSoloGame or UserActivity.PlayingDailyChallenge or UserActivity.InMultiplayerGame or UserActivity.InPlaylistGame => true,
+                _ => false,
+            };
+
+            // Stable sends the authoritative map/checksum in UserStats. Keep the
+            // spectate action enabled even when an older server emits an activity
+            // type lazer does not model (for example a Relax/extended mode).
+            if (!canSpectate && api is LegacyBanchoAPIAccess legacy)
+                canSpectate = legacy.HasPlayableSpectatorState(userPanel.User.Id)
+                               // Some stable servers do not include map_id in the
+                               // initial stats refresh. The server-side spectate
+                               // response is authoritative in that case.
+                               || presence.Status == UserStatus.Online;
+
+            userPanel.CanSpectate.Value = canSpectate;
         }
 
         private OnlineUserPanel createUserPanel(APIUser user)

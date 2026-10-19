@@ -139,6 +139,10 @@ namespace osu.Game
 
         private LoginOverlay loginOverlay;
 
+        private ServerSwitcherOverlay serverSwitcherOverlay;
+
+        public ServerSwitcherOverlay ServerSwitcher => serverSwitcherOverlay;
+
         private NowPlayingOverlay nowPlayingOverlay;
 
         private BeatmapSetOverlay beatmapSetOverlay;
@@ -1185,6 +1189,11 @@ namespace osu.Game
             loadComponentSingleFile(statisticsProvider = new LocalUserStatisticsProvider(), Add, true);
             loadComponentSingleFile(difficultyRecommender = new DifficultyRecommender(statisticsProvider), Add, true);
             loadComponentSingleFile(new UserStatisticsWatcher(statisticsProvider), Add, true);
+            loadComponentSingleFile(serverSwitcherOverlay = new ServerSwitcherOverlay
+            {
+                Anchor = Anchor.TopLeft,
+                Origin = Anchor.TopLeft,
+            }, leftFloatingOverlayContent.Add, true);
             loadComponentSingleFile(Toolbar = new Toolbar
             {
                 OnHome = delegate
@@ -1261,7 +1270,7 @@ namespace osu.Game
             Add(new FriendPresenceNotifier());
 
             // side overlays which cancel each other.
-            var singleDisplaySideOverlays = new OverlayContainer[] { Settings, Notifications, FirstRunOverlay, loginOverlay, nowPlayingOverlay };
+            var singleDisplaySideOverlays = new OverlayContainer[] { Settings, Notifications, FirstRunOverlay, loginOverlay, nowPlayingOverlay, serverSwitcherOverlay };
 
             foreach (var overlay in singleDisplaySideOverlays)
             {

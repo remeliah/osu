@@ -101,6 +101,16 @@ namespace osu.Game.Scoring
         public long? LegacyTotalScore { get; set; }
 
         /// <summary>
+        /// Exact osu!stable mode-specific bonus counters retained while a
+        /// stable-compatible play is being submitted.
+        /// </summary>
+        [Ignored]
+        public int? LegacyCountGeki { get; set; }
+
+        [Ignored]
+        public int? LegacyCountKatu { get; set; }
+
+        /// <summary>
         /// If background processing of this beatmap failed in some way, this flag will become <c>true</c>.
         /// Should be used to ensure we don't repeatedly attempt to reprocess the same scores each startup even though we already know they will fail.
         /// </summary>

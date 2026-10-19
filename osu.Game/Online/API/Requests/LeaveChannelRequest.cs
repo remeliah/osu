@@ -9,11 +9,11 @@ namespace osu.Game.Online.API.Requests
 {
     public class LeaveChannelRequest : APIRequest
     {
-        private readonly Channel channel;
+        public readonly Channel Channel;
 
         public LeaveChannelRequest(Channel channel)
         {
-            this.channel = channel;
+            Channel = channel;
         }
 
         protected override WebRequest CreateWebRequest()
@@ -23,6 +23,6 @@ namespace osu.Game.Online.API.Requests
             return req;
         }
 
-        protected override string Target => $@"chat/channels/{channel.Id}/users/{User!.Id}";
+        protected override string Target => $@"chat/channels/{Channel.Id}/users/{User!.Id}";
     }
 }

@@ -50,6 +50,7 @@ using osu.Game.IO;
 using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
+using osu.Game.Online.Bancho;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Online.Metadata;
@@ -107,9 +108,9 @@ namespace osu.Game
         public virtual bool UseDevelopmentServer => DebugUtils.IsDebugBuild;
 
         public virtual EndpointConfiguration CreateEndpoints() =>
-            UseDevelopmentServer ? new DevelopmentEndpointConfiguration() : new ProductionEndpointConfiguration();
+            PrivateServerEndpointConfiguration.FromConfig(LocalConfig);
 
-        protected override OnlineStore CreateOnlineStore() => new TrustedDomainOnlineStore();
+        protected override OnlineStore CreateOnlineStore() => new TrustedDomainOnlineStore(LocalConfig);
 
         public virtual Version AssemblyVersion => Assembly.GetEntryAssembly()?.GetName().Version ?? new Version();
 
@@ -292,7 +293,7 @@ namespace osu.Game
             largeStore.AddTextureSource(Host.CreateTextureLoaderStore(CreateOnlineStore()));
             dependencies.Cache(largeStore);
 
-            dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
+            dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm, LocalConfig));
 
             dependencies.CacheAs(LocalConfig);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);
@@ -319,7 +320,9 @@ namespace osu.Game
 
             CurrentLanguage.BindValueChanged(val => frameworkLocale.Value = val.NewValue.ToCultureCode());
 
-            dependencies.CacheAs(API ??= new APIAccess(this, LocalConfig, endpoints, VersionHash));
+            dependencies.CacheAs(API ??= endpoints is PrivateServerEndpointConfiguration privateEndpoints
+                ? new LegacyBanchoAPIAccess(this, LocalConfig, privateEndpoints)
+                : new APIAccess(this, LocalConfig, endpoints, VersionHash));
 
             var defaultBeatmap = new DummyWorkingBeatmap(Audio, Textures);
 
@@ -339,9 +342,15 @@ namespace osu.Game
 
             // TODO: OsuGame or OsuGameBase?
             dependencies.CacheAs(beatmapUpdater = CreateBeatmapUpdater());
-            dependencies.CacheAs(SpectatorClient = new OnlineSpectatorClient(endpoints));
-            dependencies.CacheAs(MultiplayerClient = new OnlineMultiplayerClient(endpoints));
-            dependencies.CacheAs(metadataClient = new OnlineMetadataClient(endpoints));
+            dependencies.CacheAs(SpectatorClient = API is LegacyBanchoAPIAccess legacySpectatorApi
+                ? new LegacyBanchoSpectatorClient(legacySpectatorApi)
+                : new OnlineSpectatorClient(endpoints));
+            dependencies.CacheAs(MultiplayerClient = API is LegacyBanchoAPIAccess legacyMultiplayerApi
+                ? new LegacyBanchoMultiplayerClient(legacyMultiplayerApi)
+                : new OnlineMultiplayerClient(endpoints));
+            dependencies.CacheAs(metadataClient = API is LegacyBanchoAPIAccess legacyBancho
+                ? new LegacyBanchoMetadataClient(legacyBancho)
+                : new OnlineMetadataClient(endpoints));
 
             base.Content.Add(new BeatmapOnlineChangeIngest(beatmapUpdater, realm, metadataClient));
 
@@ -381,7 +390,7 @@ namespace osu.Game
             base.Content.Add(LeaderboardManager);
 
             // add api components to hierarchy.
-            if (API is APIAccess apiAccess)
+            if (API is Drawable apiAccess)
                 base.Content.Add(apiAccess);
 
             base.Content.Add(SpectatorClient);

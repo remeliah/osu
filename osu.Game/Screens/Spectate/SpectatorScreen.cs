@@ -12,6 +12,7 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.Bancho;
 using osu.Game.Online.Metadata;
 using osu.Game.Online.Spectator;
 using osu.Game.Replays;
@@ -108,7 +109,8 @@ namespace osu.Game.Screens.Spectate
                 if (!userStates.TryGetValue(userId, out var userState))
                     continue;
 
-                if (beatmapSet.Beatmaps.Any(b => b.OnlineID == userState.BeatmapID))
+                if (beatmapSet.Beatmaps.Any(b => b.OnlineID == userState.BeatmapID
+                                               || (!string.IsNullOrEmpty(userState.BeatmapHash) && b.MD5Hash == userState.BeatmapHash)))
                     startGameplay(userId);
             }
         }
@@ -167,8 +169,22 @@ namespace osu.Game.Screens.Spectate
                 return;
 
             var resolvedBeatmap = beatmaps.QueryBeatmap(b => b.OnlineID == spectatorState.BeatmapID);
+
+            // Stable Bancho sends both the beatmap ID and checksum in user stats. Imported
+            // beatmaps can legitimately have no online ID in lazer, so stable clients use
+            // the checksum as the authoritative local lookup in that case.
+            if (resolvedBeatmap == null && !string.IsNullOrEmpty(spectatorState.BeatmapHash))
+                resolvedBeatmap = beatmaps.QueryBeatmap(b => b.MD5Hash == spectatorState.BeatmapHash);
+
             if (resolvedBeatmap == null)
+            {
+                if (spectatorClient is LegacyBanchoSpectatorClient legacySpectator)
+                    legacySpectator.NotifyBeatmapUnavailable(userId, spectatorState);
                 return;
+            }
+
+            if (spectatorClient is LegacyBanchoSpectatorClient legacyClient)
+                legacyClient.NotifyBeatmapAvailable(userId);
 
             var score = new Score
             {

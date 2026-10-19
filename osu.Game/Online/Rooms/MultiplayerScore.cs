@@ -16,6 +16,7 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
+using osu.Game.Users;
 
 namespace osu.Game.Online.Rooms
 {
@@ -33,6 +34,12 @@ namespace osu.Game.Online.Rooms
 
         [JsonProperty("total_score")]
         public long TotalScore { get; set; }
+
+        /// <summary>
+        /// Exact ScoreV1 total when this score originated from stable gameplay.
+        /// </summary>
+        [JsonIgnore]
+        public long? LegacyTotalScore { get; set; }
 
         [JsonProperty("accuracy")]
         public double Accuracy { get; set; }
@@ -83,6 +90,16 @@ namespace osu.Game.Online.Rooms
         [JsonProperty("beatmap_id")]
         public int BeatmapId { get; set; }
 
+        /// <summary>
+        /// Statistics returned atomically with a legacy score submission.
+        /// These are not part of the lazer API response and are excluded from JSON.
+        /// </summary>
+        [JsonIgnore]
+        public UserStatistics StatisticsBefore { get; set; }
+
+        [JsonIgnore]
+        public UserStatistics StatisticsAfter { get; set; }
+
         public ScoreInfo CreateScoreInfo(ScoreManager scoreManager, RulesetStore rulesets, [NotNull] BeatmapInfo beatmap)
         {
             var ruleset = rulesets.GetRuleset(RulesetId);
@@ -95,6 +112,7 @@ namespace osu.Game.Online.Rooms
             {
                 OnlineID = ID,
                 TotalScore = TotalScore,
+                LegacyTotalScore = LegacyTotalScore,
                 MaxCombo = MaxCombo,
                 BeatmapInfo = beatmap,
                 Ruleset = ruleset,

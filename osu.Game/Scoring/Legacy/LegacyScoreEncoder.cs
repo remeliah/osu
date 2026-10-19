@@ -123,6 +123,12 @@ namespace osu.Game.Scoring.Legacy
             }
         }
 
+        /// <summary>
+        /// Encodes only the LZMA-compressed replay payload used by the stable score submission endpoint.
+        /// Unlike <see cref="Encode"/>, this does not include the .osr header and score metadata.
+        /// </summary>
+        public byte[] EncodeReplayData() => createReplayData();
+
         private void writeModSpecificData(ScoreInfo score, SerializationWriter sw)
         {
         }

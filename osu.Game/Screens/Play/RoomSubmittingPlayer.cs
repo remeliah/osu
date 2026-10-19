@@ -2,10 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics;
+using osu.Framework.Allocation;
 using osu.Game.Beatmaps;
 using osu.Game.Extensions;
 using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
+using osu.Game.Online.Solo;
 using osu.Game.Scoring;
 
 namespace osu.Game.Screens.Play
@@ -15,6 +17,9 @@ namespace osu.Game.Screens.Play
     /// </summary>
     public abstract partial class RoomSubmittingPlayer : SubmittingPlayer
     {
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
+
         protected readonly PlaylistItem PlaylistItem;
         protected readonly Room Room;
 
@@ -30,16 +35,26 @@ namespace osu.Game.Screens.Play
             if (Room.RoomID is not long roomId)
                 return null;
 
-            int beatmapId = Beatmap.Value.BeatmapInfo.OnlineID;
             int rulesetId = Ruleset.Value.OnlineID;
+
+            if (!Ruleset.Value.IsLegacyRuleset())
+                return null;
+
+            if (api is LegacyBanchoAPIAccess)
+            {
+                int legacyBeatmapId = Beatmap.Value.GetOnlineIds().BeatmapID;
+                if (legacyBeatmapId <= 0)
+                    return null;
+
+                return new CreateSoloScoreRequest(Beatmap.Value.BeatmapInfo, rulesetId, Game.VersionHash, [.. Score.ScoreInfo.Mods], legacyBeatmapId);
+            }
+
+            int beatmapId = Beatmap.Value.BeatmapInfo.OnlineID;
 
             if (beatmapId <= 0)
                 return null;
 
             if (Beatmap.Value.BeatmapInfo.Status == BeatmapOnlineStatus.LocallyModified)
-                return null;
-
-            if (!Ruleset.Value.IsLegacyRuleset())
                 return null;
 
             return new CreateRoomScoreRequest(roomId, PlaylistItem.ID, Beatmap.Value.BeatmapInfo, rulesetId, Game.VersionHash);
@@ -48,6 +63,14 @@ namespace osu.Game.Screens.Play
         protected override APIRequest<MultiplayerScore> CreateSubmissionRequest(Score score, long token)
         {
             Debug.Assert(Room.RoomID != null);
+
+            if (api is LegacyBanchoAPIAccess)
+            {
+                int beatmapId = Beatmap.Value.GetOnlineIds().BeatmapID;
+                Debug.Assert(beatmapId > 0);
+                return new SubmitSoloScoreRequest(score, Beatmap.Value.Beatmap, token, beatmapId);
+            }
+
             return new SubmitRoomScoreRequest(score.ScoreInfo, token, Room.RoomID.Value, PlaylistItem.ID);
         }
     }

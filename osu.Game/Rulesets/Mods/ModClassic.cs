@@ -20,15 +20,11 @@ namespace osu.Game.Rulesets.Mods
         public override ModType Type => ModType.Conversion;
 
         /// <summary>
-        /// Classic mods are not to be ranked yet due to compatibility and multiplier concerns.
-        /// Right now classic mods are considered, for leaderboard purposes, to be equal as scores set on osu-stable.
-        /// But this is not the case.
-        ///
-        /// Some examples for things to resolve before even considering this:
-        ///  - Hit windows differ (https://github.com/ppy/osu/issues/11311).
-        ///  - Sliders always gives combo for slider end, even on miss (https://github.com/ppy/osu/issues/11769).
+        /// The default configuration is the gameplay compatibility layer used
+        /// for stable Bancho scores. Custom Classic settings have no stable
+        /// protocol equivalent and therefore remain unranked.
         /// </summary>
-        public sealed override bool Ranked => false;
+        public sealed override bool Ranked => UsesDefaultConfiguration;
 
         public sealed override bool ValidForFreestyleAsRequiredMod => false;
     }

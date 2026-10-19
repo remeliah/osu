@@ -10,6 +10,7 @@ using osu.Game.Extensions;
 using osu.Game.Online.API;
 using osu.Game.Online.Spectator;
 using osu.Game.Scoring;
+using osu.Game.Users;
 
 namespace osu.Game.Online
 {
@@ -57,8 +58,23 @@ namespace osu.Game.Online
                 if (!score.Ruleset.IsLegacyRuleset() || score.OnlineID <= 0)
                     return;
 
+                // A stable score submission returns the before/after profile
+                // statistics in the submission response itself. In that case the
+                // update has already been published and no spectator callback is
+                // expected for the submitted score.
+                if (latestUpdate.Value?.Score.MatchesOnlineID(score) == true)
+                    return;
+
                 watchedScores.Add(score.OnlineID, score);
             });
+        }
+
+        /// <summary>
+        /// Publishes statistics supplied atomically by a score submission response.
+        /// </summary>
+        public void PublishStatisticsUpdate(ScoreInfo score, UserStatistics before, UserStatistics after)
+        {
+            Schedule(() => latestUpdate.Value = new ScoreBasedUserStatisticsUpdate(score, before, after));
         }
 
         private void userScoreProcessed(int userId, long scoreId)

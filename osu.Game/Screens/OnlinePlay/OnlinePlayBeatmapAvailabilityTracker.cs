@@ -15,6 +15,7 @@ using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Online;
+using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Rooms;
 
@@ -44,6 +45,9 @@ namespace osu.Game.Screens.OnlinePlay
         [Resolved]
         private BeatmapLookupCache beatmapLookupCache { get; set; } = null!;
 
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
+
         private readonly Bindable<BeatmapAvailability> availability = new Bindable<BeatmapAvailability>(BeatmapAvailability.NotDownloaded());
 
         private ScheduledDelegate? progressUpdate;
@@ -72,12 +76,21 @@ namespace osu.Game.Screens.OnlinePlay
 
                 cancelTracking();
 
+                string checksum = item.NewValue.Beatmap.MD5Hash ?? string.Empty;
+                if (api is LegacyBanchoAPIAccess && !string.IsNullOrEmpty(checksum) && queryBeatmapByChecksum(checksum).Any())
+                {
+                    startTrackingLegacyChecksum(checksum);
+                    return;
+                }
+
                 beatmapLookupCache.GetBeatmapAsync(item.NewValue.Beatmap.OnlineID).ContinueWith(task => Schedule(() =>
                 {
                     var beatmap = task.GetResultSafely();
 
                     if (beatmap != null && PlaylistItem.Value?.Beatmap.OnlineID == beatmap.OnlineID)
                         startTracking(beatmap);
+                    else if (api is LegacyBanchoAPIAccess && PlaylistItem.Value?.Beatmap.MD5Hash == checksum)
+                        availability.Value = BeatmapAvailability.NotDownloaded();
                 }), TaskContinuationOptions.OnlyOnRanToCompletion);
             }, true);
         }
@@ -152,10 +165,32 @@ namespace osu.Game.Screens.OnlinePlay
                 }
             }
 
-            IQueryable<BeatmapInfo> queryBeatmap() =>
-                realm.Realm.All<BeatmapInfo>()
-                     .ForOnlineId(beatmap.OnlineID);
+            IQueryable<BeatmapInfo> queryBeatmap()
+            {
+                string checksum = PlaylistItem.Value?.Beatmap.MD5Hash ?? string.Empty;
+                return api is LegacyBanchoAPIAccess && !string.IsNullOrEmpty(checksum)
+                    ? realm.Realm.All<BeatmapInfo>().Where(b => b.OnlineID == beatmap.OnlineID || b.MD5Hash == checksum)
+                    : realm.Realm.All<BeatmapInfo>().ForOnlineId(beatmap.OnlineID);
+            }
         }
+
+        private void startTrackingLegacyChecksum(string checksum)
+        {
+            void updateAvailability() => availability.Value = queryBeatmapByChecksum(checksum).Any()
+                ? BeatmapAvailability.LocallyAvailable()
+                : BeatmapAvailability.NotDownloaded();
+
+            realmSubscription = realm.RegisterForNotifications(_ => queryBeatmapByChecksum(checksum), (_, changes) =>
+            {
+                if (changes != null)
+                    Scheduler.AddOnce(updateAvailability);
+            });
+
+            updateAvailability();
+        }
+
+        private IQueryable<BeatmapInfo> queryBeatmapByChecksum(string checksum) =>
+            realm.Realm.All<BeatmapInfo>().Where(b => b.MD5Hash == checksum);
 
         protected override void Dispose(bool isDisposing)
         {

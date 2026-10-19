@@ -20,6 +20,8 @@ using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Localisation;
+using osu.Game.Online.API;
+using osu.Game.Online.Bancho;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Mods;
 using osu.Game.Rulesets;
@@ -36,6 +38,9 @@ namespace osu.Game.Screens.Select
 {
     public partial class FooterButtonMods : ScreenFooterButton
     {
+        [Resolved(canBeNull: true)]
+        private IAPIProvider? api { get; set; }
+
         public Action? RequestDeselectAllMods { get; init; }
 
         public const float BAR_HEIGHT = 30f;
@@ -249,8 +254,13 @@ namespace osu.Game.Screens.Select
                 modDisplay.FadeIn(duration, easing);
             }
 
-            var scoreMultiplierCalculator = Ruleset.Value?.CreateInstance().CreateScoreMultiplierCalculator(new ScoreMultiplierContext(beatmap.Value.BeatmapInfo.Difficulty));
+            Ruleset? ruleset = Ruleset.Value?.CreateInstance();
+            var scoreMultiplierCalculator = ruleset?.CreateScoreMultiplierCalculator(new ScoreMultiplierContext(beatmap.Value.BeatmapInfo.Difficulty));
             double multiplier = scoreMultiplierCalculator?.CalculateFor(Mods.Value) ?? 1;
+
+            if (api is LegacyBanchoAPIAccess && ruleset != null)
+                multiplier = LegacyModConversion.GetStableDisplayMultiplier(ruleset, Mods.Value, multiplier);
+
             multiplierText.Text = ModUtils.FormatScoreMultiplier(multiplier);
 
             if (multiplier > 1)

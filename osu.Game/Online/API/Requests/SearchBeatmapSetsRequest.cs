@@ -44,6 +44,21 @@ namespace osu.Game.Online.API.Requests
         private readonly RulesetInfo ruleset;
         private readonly Cursor cursor;
 
+        internal string Query => query ?? string.Empty;
+
+        internal int RulesetId => ruleset?.OnlineID ?? -1;
+
+        internal int Page
+        {
+            get
+            {
+                if (cursor?.Properties.TryGetValue("page", out var value) == true && value.Type == Newtonsoft.Json.Linq.JTokenType.Integer)
+                    return value.ToObject<int>();
+
+                return 0;
+            }
+        }
+
         private string directionString => SortDirection == SortDirection.Descending ? @"desc" : @"asc";
 
         public SearchBeatmapSetsRequest(
