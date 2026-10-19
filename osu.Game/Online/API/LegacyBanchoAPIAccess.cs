@@ -32,6 +32,7 @@ using osu.Game.Online.Spectator;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Scoring;
 using osu.Game.Users;
 
 namespace osu.Game.Online.API

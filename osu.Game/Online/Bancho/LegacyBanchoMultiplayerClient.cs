@@ -25,6 +25,7 @@ using osu.Game.Online.RankedPlay;
 using osu.Game.Online.Rooms;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Scoring;
 using RoomMatchType = osu.Game.Online.Rooms.MatchType;
 
 namespace osu.Game.Online.Bancho
